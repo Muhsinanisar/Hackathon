@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>5-Day Weather Forecast</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f0f8ff;
+    }
+    input, button {
+      padding: 8px;
+      margin: 5px;
+    }
+    .day {
+      background: #fff;
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .alert {
+      color: red;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>5-Day Weather Forecast</h2>
+  <input id="city" placeholder="Enter city" />
+  <button onclick="getForecast()">Get Forecast</button>
+  <div id="output"></div>
+
+  <script>
+    const apiKey = "72d322ef53d2d07ae40bfec1c2787f56";
+
+    async function getForecast() {
+      const city = document.getElementById("city").value.trim();
+      if (!city) {
+        alert("Please enter a city name.");
+        return;
+      }
+
+      try {
+        const res = await fetch(
+          `https://api.openweathermap.org/data/2.5/forecast?q=${encodeURIComponent(city)}&appid=${apiKey}&units=metric`
+        );
+        if (!res.ok) throw new Error(`Error: ${res.status} ${res.statusText}`);
+
+        const data = await res.json();
+        displayForecast(data);
+      } catch (e) {
+        document.getElementById("output").innerHTML = `<p style="color:red;">${e.message}</p>`;
+      }
+    }
+
+    function displayForecast(data) {
+      const output = document.getElementById("output");
+      output.innerHTML = `<h3>Weather Forecast for ${data.city.name}, ${data.city.country}</h3>`;
+
+      const dailyData = {};
+      data.list.forEach(item => {
+        const date = item.dt_txt.split(" ")[0];
+        if (!dailyData[date]) dailyData[date] = [];
+        dailyData[date].push(item);
+      });
+
+      const days = Object.keys(dailyData).slice(0, 5);
+      days.forEach(date => {
+        const dayItems = dailyData[date];
+        const tempAvg = (dayItems.reduce((sum, d) => sum + d.main.temp, 0) / dayItems.length).toFixed(1);
+        const windAvg = (dayItems.reduce((sum, d) => sum + d.wind.speed, 0) / dayItems.length).toFixed(1);
+        const humidityAvg = (dayItems.reduce((sum, d) => sum + d.main.humidity, 0) / dayItems.length).toFixed(1); 
+        const pressureAvg = (dayItems.reduce((sum, d) => sum + d.main.pressure, 0) / dayItems.length).toFixed(1); 
+        const weather = dayItems[0].weather[0].description;
+        const icon = `https://openweathermap.org/img/wn/${dayItems[0].weather[0].icon}@2x.png`;
+
+        const heavyRain = dayItems.some(d => (d.rain && d.rain["3h"] > 10));
+        const strongWind = dayItems.some(d => d.wind.speed > 10);
+
+        let alertMsg = "";
+        if (heavyRain) alertMsg += "⚠️ Heavy Rain Expected! ";
+        if (strongWind) alertMsg += "💨 Strong Winds Expected!";
+
+        output.innerHTML += `
+          <div class="day">
+            <h4>${date}</h4>
+            <img src="${icon}" alt="icon">
+            <p>Average Temp: ${tempAvg}°C</p>
+            <p>Condition: ${weather}</p>
+            <p>Average Wind Speed: ${windAvg} m/s</p>
+            <p>Average Humidity: ${humidityAvg}%</p>
+            <p>Average Pressure: ${pressureAvg} hPa</p>
+            ${alertMsg ? `<p class="alert">${alertMsg}</p>` : ""}
+          </div>
+        `;
+      });
+    }
+  </script>
+</body>
+</html>
